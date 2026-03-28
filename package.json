@@ -1,0 +1,13 @@
+{
+  "name": "com.willgoldstone.workspaces",
+  "displayName": "Workspaces",
+  "version": "0.1.1",
+  "unity": "2021.3",
+  "description": "Tabbed editor toolbar that jumps between Home, Prefab isolation, and custom layouts while preserving selection.",
+  "author": {
+    "name": "Will Goldstone",
+    "url": "https://github.com/willgoldstoneSD"
+  },
+  "type": "tool"
+}
+
