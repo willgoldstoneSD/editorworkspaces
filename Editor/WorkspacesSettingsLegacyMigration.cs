@@ -1,61 +1,90 @@
+using System;
 using System.IO;
-using System.Linq;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 
 namespace WillGoldstone.Workspaces
 {
     /// <summary>
-    /// One-time copy from <c>ProjectWeasel.Workspaces.asset</c> into the current settings singleton,
-    /// save to <c>WillGoldstone.Workspaces.asset</c>, then remove the legacy file.
+    /// Unity does not reliably expose <c>ProjectSettings/*.asset</c> through <see cref="AssetDatabase.LoadAllAssetsAtPath"/>,
+    /// so we copy the legacy file on disk before <see cref="WorkspacesSettings"/> is first deserialized.
     /// </summary>
     internal static class WorkspacesSettingsLegacyMigration
     {
-        private const string LegacyProjectRelativePath = "ProjectSettings/ProjectWeasel.Workspaces.asset";
+        private const string LegacyRelative = "ProjectSettings/ProjectWeasel.Workspaces.asset";
+        private const string CurrentRelative = "ProjectSettings/WillGoldstone.Workspaces.asset";
 
-        private static string MigrationEditorPrefKey =>
-            "WillGoldstone.Workspaces.LegacyAssetMigrated_v1." + Directory.GetParent(Application.dataPath)!.FullName;
+        private static string PrefKeyV2 =>
+            "WillGoldstone.Workspaces.LegacyAssetFileMigrated_v2." + Directory.GetParent(Application.dataPath)!.FullName;
 
-        internal static void TryMigrateInto(WorkspacesSettings settings)
+        [InitializeOnLoadMethod(-32000)]
+        private static void RunBeforeAnySingletonAccess()
         {
-            if (EditorPrefs.GetBool(MigrationEditorPrefKey, false))
+            try
+            {
+                RunFileMigrationIfNeeded();
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[Workspaces] Legacy settings migration failed: {e.Message}\n{e.StackTrace}");
+            }
+        }
+
+        private static void RunFileMigrationIfNeeded()
+        {
+            if (EditorPrefs.GetBool(PrefKeyV2, false))
                 return;
 
             var projectRoot = Directory.GetParent(Application.dataPath)!.FullName;
-            var legacyFullPath = Path.Combine(projectRoot, "ProjectSettings", "ProjectWeasel.Workspaces.asset");
-
-            if (!File.Exists(legacyFullPath))
+            var legacyFull = Path.Combine(projectRoot, LegacyRelative.Replace('/', Path.DirectorySeparatorChar));
+            if (!File.Exists(legacyFull))
             {
-                EditorPrefs.SetBool(MigrationEditorPrefKey, true);
+                EditorPrefs.SetBool(PrefKeyV2, true);
                 return;
             }
 
-            var legacyObjects = AssetDatabase.LoadAllAssetsAtPath(LegacyProjectRelativePath);
-            var fromLegacy = legacyObjects.OfType<WorkspacesSettings>().FirstOrDefault();
+            var currentFull = Path.Combine(projectRoot, CurrentRelative.Replace('/', Path.DirectorySeparatorChar));
+            var legacyLen = new FileInfo(legacyFull).Length;
 
-            if (fromLegacy == null)
+            if (File.Exists(currentFull) && new FileInfo(currentFull).Length >= legacyLen)
             {
-                Debug.LogWarning(
-                    "[Workspaces] Found ProjectWeasel.Workspaces.asset but could not load it as WorkspacesSettings (missing or mismatched script reference). " +
-                    "Your settings are unchanged; you can remove or fix the legacy asset manually.");
-                EditorPrefs.SetBool(MigrationEditorPrefKey, true);
+                EditorPrefs.SetBool(PrefKeyV2, true);
                 return;
             }
 
-            EditorUtility.CopySerialized(fromLegacy, settings);
-            settings.SaveToDiskAfterMigration();
+            var dir = Path.GetDirectoryName(currentFull);
+            if (!string.IsNullOrEmpty(dir))
+                Directory.CreateDirectory(dir);
 
-            if (!AssetDatabase.DeleteAsset(LegacyProjectRelativePath))
+            File.Copy(legacyFull, currentFull, true);
+            TryClearScriptableSingletonCache();
+
+            if (!AssetDatabase.DeleteAsset(LegacyRelative))
             {
-                File.Delete(legacyFullPath);
-                var meta = legacyFullPath + ".meta";
+                File.Delete(legacyFull);
+                var meta = legacyFull + ".meta";
                 if (File.Exists(meta))
                     File.Delete(meta);
             }
 
             AssetDatabase.Refresh();
-            EditorPrefs.SetBool(MigrationEditorPrefKey, true);
-            Debug.Log("[Workspaces] Migrated settings from ProjectWeasel.Workspaces.asset into WillGoldstone.Workspaces.asset and removed the legacy file.");
+            EditorPrefs.SetBool(PrefKeyV2, true);
+            Debug.Log("[Workspaces] Migrated ProjectWeasel.Workspaces.asset → WillGoldstone.Workspaces.asset (on-disk copy). If the toolbar still looks empty, restart the Editor once.");
+        }
+
+        private static void TryClearScriptableSingletonCache()
+        {
+            for (var t = typeof(WorkspacesSettings); t != null && t != typeof(UnityEngine.Object) && t != typeof(object); t = t.BaseType)
+            {
+                foreach (var fi in t.GetFields(BindingFlags.Static | BindingFlags.NonPublic))
+                {
+                    if (!typeof(WorkspacesSettings).IsAssignableFrom(fi.FieldType))
+                        continue;
+                    fi.SetValue(null, null);
+                    return;
+                }
+            }
         }
     }
 }

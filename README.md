@@ -37,7 +37,7 @@ To share only this package (no game project):
 
 ## Project Settings
 
-Settings are stored in `ProjectSettings/WillGoldstone.Workspaces.asset`. If you still have `ProjectSettings/ProjectWeasel.Workspaces.asset` from an older package id, it is migrated automatically once (data is copied, then the legacy file is removed).
+Settings are stored in `ProjectSettings/WillGoldstone.Workspaces.asset`. If you still have `ProjectSettings/ProjectWeasel.Workspaces.asset` from an older package id, it is migrated automatically on editor startup (on-disk file copy before the settings singleton loads; restart once if the UI still looks empty).
 
 Open **Project Settings → Workspaces**:
 
