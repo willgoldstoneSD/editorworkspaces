@@ -18,7 +18,7 @@ namespace WillGoldstone.Workspaces
         private static string PrefKeyV2 =>
             "WillGoldstone.Workspaces.LegacyAssetFileMigrated_v2." + Directory.GetParent(Application.dataPath)!.FullName;
 
-        [InitializeOnLoadMethod(-32000)]
+        [InitializeOnLoadMethod(order = -32000)]
         private static void RunBeforeAnySingletonAccess()
         {
             try
@@ -85,6 +85,8 @@ namespace WillGoldstone.Workspaces
                     return;
                 }
             }
+
+            Debug.LogWarning("[Workspaces] Could not clear ScriptableSingleton cache via reflection; restart the Editor if workspaces still look empty.");
         }
     }
 }
