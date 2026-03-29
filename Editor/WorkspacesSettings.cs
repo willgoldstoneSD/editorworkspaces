@@ -64,7 +64,8 @@ namespace WillGoldstone.Workspaces
         internal string PrefabPath => string.IsNullOrEmpty(prefabGuid) ? null : AssetDatabase.GUIDToAssetPath(prefabGuid);
     }
 
-    [FilePath("ProjectSettings/WillGoldstone.Workspaces.asset", FilePathAttribute.Location.ProjectFolder)]
+    // Legacy filename: existing projects already have ProjectWeasel.Workspaces.asset; changing the path orphans settings.
+    [FilePath("ProjectSettings/ProjectWeasel.Workspaces.asset", FilePathAttribute.Location.ProjectFolder)]
     internal sealed class WorkspacesSettings : ScriptableSingleton<WorkspacesSettings>
     {
         [SerializeField] private WorkspaceDefinition homeWorkspace;
