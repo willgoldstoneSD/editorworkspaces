@@ -9,7 +9,9 @@ namespace WillGoldstone.Workspaces
     /// <summary>
     /// Unity does not reliably expose <c>ProjectSettings/*.asset</c> through <see cref="AssetDatabase.LoadAllAssetsAtPath"/>,
     /// so we copy the legacy file on disk before <see cref="WorkspacesSettings"/> is first deserialized.
+    /// Uses <see cref="InitializeOnLoad"/> (Unity 6 has no ordered <c>InitializeOnLoadMethod(int)</c> constructor).
     /// </summary>
+    [InitializeOnLoad]
     internal static class WorkspacesSettingsLegacyMigration
     {
         private const string LegacyRelative = "ProjectSettings/ProjectWeasel.Workspaces.asset";
@@ -18,8 +20,7 @@ namespace WillGoldstone.Workspaces
         private static string PrefKeyV2 =>
             "WillGoldstone.Workspaces.LegacyAssetFileMigrated_v2." + Directory.GetParent(Application.dataPath)!.FullName;
 
-        [InitializeOnLoadMethod(order = -32000)]
-        private static void RunBeforeAnySingletonAccess()
+        static WorkspacesSettingsLegacyMigration()
         {
             try
             {
