@@ -123,10 +123,31 @@ namespace WillGoldstone.Workspaces
 
             if (workspaces.Count == 0)
             {
-                ResetToDefaults();
+                // Only seed the template list when there is no real settings file yet. After a domain
+                // reload (script recompile), the in-memory list can be empty briefly while the asset on
+                // disk still holds your workspaces — ResetToDefaults() here previously overwrote that file.
+                if (ShouldSeedFirstRunDefaultsBecauseNoSettingsFile())
+                    ResetToDefaults();
             }
 
             ValidateIds();
+        }
+
+        private static string SettingsFileAbsolutePath =>
+            Path.Combine(Directory.GetParent(Application.dataPath)!.FullName, "ProjectSettings", "WillGoldstone.Workspaces.asset");
+
+        private static bool ShouldSeedFirstRunDefaultsBecauseNoSettingsFile()
+        {
+            try
+            {
+                if (!File.Exists(SettingsFileAbsolutePath))
+                    return true;
+                return new FileInfo(SettingsFileAbsolutePath).Length < 96;
+            }
+            catch
+            {
+                return true;
+            }
         }
 
         internal void ResetToDefaults()
