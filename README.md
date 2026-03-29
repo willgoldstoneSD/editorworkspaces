@@ -37,7 +37,7 @@ To share only this package (no game project):
 
 ## Project Settings
 
-Settings are stored in `ProjectSettings/ProjectWeasel.Workspaces.asset` (filename kept for compatibility with projects that configured Workspaces before the `com.willgoldstone.workspaces` package id).
+Settings are stored in `ProjectSettings/WillGoldstone.Workspaces.asset`. If you still have `ProjectSettings/ProjectWeasel.Workspaces.asset` from an older package id, it is migrated automatically once (data is copied, then the legacy file is removed).
 
 Open **Project Settings → Workspaces**:
 

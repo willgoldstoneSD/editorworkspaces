@@ -64,8 +64,7 @@ namespace WillGoldstone.Workspaces
         internal string PrefabPath => string.IsNullOrEmpty(prefabGuid) ? null : AssetDatabase.GUIDToAssetPath(prefabGuid);
     }
 
-    // Legacy filename: existing projects already have ProjectWeasel.Workspaces.asset; changing the path orphans settings.
-    [FilePath("ProjectSettings/ProjectWeasel.Workspaces.asset", FilePathAttribute.Location.ProjectFolder)]
+    [FilePath("ProjectSettings/WillGoldstone.Workspaces.asset", FilePathAttribute.Location.ProjectFolder)]
     internal sealed class WorkspacesSettings : ScriptableSingleton<WorkspacesSettings>
     {
         [SerializeField] private WorkspaceDefinition homeWorkspace;
@@ -78,6 +77,9 @@ namespace WillGoldstone.Workspaces
 
         internal void EnsureDefaults()
         {
+            if (!isSwitchingTabs)
+                WorkspacesSettingsLegacyMigration.TryMigrateInto(this);
+
             // Don't modify properties during tab switches to prevent Settings window from opening
             if (isSwitchingTabs)
             {
@@ -264,6 +266,23 @@ namespace WillGoldstone.Workspaces
                     {
                         Debug.Log($"[Workspaces] Settings saved. {currentCount} prefab workspace(s). Toolbar registrations were regenerated; wait for script compile if the Main Toolbar does not update immediately.");
                     }
+                };
+            };
+        }
+
+        /// <summary>Used after one-time migration from ProjectWeasel.Workspaces.asset (same persistence as Save, without UI log line).</summary>
+        internal void SaveToDiskAfterMigration()
+        {
+            allowAutoSave = true;
+            Save(false);
+            allowAutoSave = false;
+            WorkspacesToolbarCodeGenerator.RegenerateAfterSave();
+            EditorApplication.delayCall += () =>
+            {
+                EditorApplication.delayCall += () =>
+                {
+                    WorkspacesToolbar.RefreshToolbar();
+                    WorkspacesToolbar.RefreshAllWorkspaceToolbarButtons();
                 };
             };
         }
